@@ -1,0 +1,11 @@
+/* Halaman statis (panduan). Terpisah dari app.css supaya tidak bentrok dengan UI form. */
+.doc { background: #fafafa; }
+.doc-body { max-width: 44rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; font-family: "Calibri", "Carlito", Arial, sans-serif; line-height: 1.6; color: #1a1a1a; }
+.doc-back { display: inline-block; margin-bottom: 1.5rem; font-size: .9rem; color: #444; }
+.doc h1 { font-size: 1.9rem; margin: 0 0 .5rem; letter-spacing: -.01em; }
+.doc-lead { color: #444; margin: 0 0 2rem; }
+.doc h2 { font-size: 1.1rem; margin: 2rem 0 .5rem; }
+.doc p, .doc li { margin: .4rem 0; }
+.doc ul { padding-left: 1.2rem; }
+.doc code { background: #eee; padding: .1em .35em; border-radius: 3px; font-size: .9em; }
+@media (max-width: 600px) { .doc-body { padding: 1.5rem 1rem 3rem; } }

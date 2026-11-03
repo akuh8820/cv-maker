@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>Bikin CV — Standar Indonesia</title>
+<meta name="description" content="Bikin CV sesuai standar Indonesia langsung di browser. Preview A4 live, ekspor PDF dan DOCX, data tidak dikirim ke server.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%231a1a1a'/><text x='8' y='12' font-size='10' font-family='sans-serif' fill='%23fff' text-anchor='middle'>CV</text></svg>">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/cv.css">
+</head>
+<body>
+
+<header class="toolbar">
+  <h1 class="toolbar-title">Bikin CV</h1>
+  <span id="badge" class="badge" aria-live="polite"></span>
+  <nav class="toolbar-actions">
+    <label class="select-wrap">
+      Template
+      <select id="template"></select>
+    </label>
+    <button id="btn-json" type="button" class="btn-ghost">Simpan JSON</button>
+    <button id="btn-import" type="button" class="btn-ghost">Muat JSON</button>
+    <input id="file-import" type="file" accept="application/json" hidden>
+    <button id="btn-docx" type="button" class="btn-ghost">DOCX</button>
+    <button id="btn-pdf" type="button" class="btn">Simpan PDF</button>
+    <a class="btn-ghost" href="panduan.html">Panduan</a>
+  </nav>
+</header>
+
+<main class="layout">
+  <section id="form-panel" class="panel" aria-label="Formulir CV"></section>
+  <section id="preview-panel" class="panel" aria-label="Preview CV">
+    <div class="preview-viewport"><div id="preview-root"></div></div>
+  </section>
+</main>
+
+<nav class="tabbar" aria-label="Navigasi panel">
+  <button type="button" id="tab-form" class="tab is-active" aria-pressed="true">Isi</button>
+  <button type="button" id="tab-preview" class="tab" aria-pressed="false">Preview</button>
+</nav>
+
+<script src="vendor/docx.umd.cjs"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

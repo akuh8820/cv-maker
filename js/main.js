@@ -32,7 +32,27 @@ function paintBadge() {
 const repaint = debounce(() => {
   renderPreview(previewRoot, state);
   paintBadge();
+  fitPreview();
 }, 120);
+
+// Fit-to-width preview: skala = min(1, lebar tersedia / 794). (tampilan saja)
+const viewport = document.querySelector(".preview-viewport");
+let lastScale = -1;
+function fitPreview() {
+  const sheet = previewRoot?.firstElementChild;
+  if (!viewport || !sheet) return;
+  const avail = viewport.clientWidth;
+  if (!avail) return;
+  const w = sheet.offsetWidth || 794;
+  const s = avail < w ? avail / w : 1;
+  if (Math.abs(s - lastScale) < 0.001) return;
+  lastScale = s;
+  viewport.parentElement.style.setProperty("--cv-scale", s.toFixed(4));
+  viewport.parentElement.classList.toggle("is-fit", s < 1);
+  previewRoot.style.height = s < 1 ? `${Math.ceil(sheet.getBoundingClientRect().height * s)}px` : "";
+}
+new ResizeObserver(fitPreview).observe(viewport);
+window.addEventListener("resize", fitPreview);
 
 function onChange(next) {
   state = next;
@@ -44,6 +64,7 @@ function render() {
   renderForm(formPanel, state, onChange);
   renderPreview(previewRoot, state);
   paintBadge();
+  fitPreview();
 }
 
 function fillTemplates() {

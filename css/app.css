@@ -142,6 +142,15 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
 #preview-panel { overflow: auto; max-width: 100%; }
 .preview-viewport { max-width: 100%; }
 
+/* Fit-to-width: --cv-scale diset JS (min(1, lebarTersedia/794)).
+   Margin auto-negatif .cv-sheet dinetralkan saat fit (class is-fit)
+   supaya visual lembar pas; tinggi wrapper dikompensasi JS. */
+#preview-root {
+  transform: scale(var(--cv-scale, 1));
+  transform-origin: top left;
+}
+#preview-panel.is-fit .cv-sheet { margin: 0; }
+
 #form-panel { padding: 12px 12px 48px; }
 
 #preview-panel { padding: 16px 12px; }
@@ -387,7 +396,8 @@ legend.section-title { padding: 0; }
   }
 
   #preview-panel,
-  .preview-viewport {
+  .preview-viewport,
+  #preview-root {
     position: static;
     height: auto;
     max-height: none;

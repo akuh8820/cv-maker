@@ -3,6 +3,7 @@ import * as store from "./store.js";
 import { renderForm, setTemplate } from "./form.js";
 import { renderPreview, measure } from "./preview.js";
 import { buildDocx, docxFilename } from "./docx.js";
+import { wireReportLink } from "./report.js";
 import { filename, setPrintTitle, downloadBlob, debounce } from "./util.js";
 
 const $ = (id) => document.getElementById(id);
@@ -27,6 +28,7 @@ function paintBadge() {
   badge.textContent = pages > 1 ? "2 halaman — pertimbangkan memangkas" : "1 halaman";
   badge.className = `badge ${pages > 1 ? "badge-warn" : "badge-ok"}`;
   badge.title = `${Math.round(heightPx)}px dari ${Math.round(limitPx)}px area cetak`;
+  wireReportLink(state, sheet);
 }
 
 const repaint = debounce(() => {

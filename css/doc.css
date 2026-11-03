@@ -9,3 +9,8 @@
 .doc ul { padding-left: 1.2rem; }
 .doc code { background: #eee; padding: .1em .35em; border-radius: 3px; font-size: .9em; }
 @media (max-width: 600px) { .doc-body { padding: 1.5rem 1rem 3rem; } }
+
+/* Footer: Laporkan bug / Kembali */
+.site-foot { display: flex; gap: 1.5rem; max-width: 44rem; margin: 0 auto; padding: 1.5rem 1.25rem 2rem; }
+.site-foot a { display: inline-flex; align-items: center; min-height: 40px; font-family: "Calibri", "Carlito", Arial, sans-serif; font-size: .8rem; color: #555; text-decoration: none; }
+.site-foot a:hover { text-decoration: underline; }

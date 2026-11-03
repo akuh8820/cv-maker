@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Panduan CV & ATS
+    url: https://akuh8820.github.io/cv-maker/panduan.html
+    about: Aturan satu halaman, kata kunci lowongan, foto, dan data yang tidak perlu dicantumkan.
+  - name: Tanya / usul fitur
+    url: https://github.com/akuh8820/cv-maker/discussions
+    about: Untuk pertanyaan pemakaian atau usulan, bukan laporan bug.

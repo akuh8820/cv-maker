@@ -1,0 +1,72 @@
+name: Laporkan bug
+description: Sesuatu tidak berjalan seperti seharusnya (tampilan, PDF, DOCX, atau data hilang).
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Terima kasih sudah meluangkan waktu. **Jangan tempel isi CV atau data pribadi** di issue ini — sensor dulu kalau perlu menampilkan contoh.
+
+  - type: textarea
+    id: apa
+    attributes:
+      label: Apa yang terjadi
+      description: Satu-dua kalimat. Kalau ada yang terpotong/tumpang tindih, sebutkan bagian CV mana.
+      placeholder: Tombol Simpan PDF menghasilkan 2 halaman padahal badge menulis 1 halaman.
+    validations:
+      required: true
+
+  - type: textarea
+    id: langkah
+    attributes:
+      label: Langkah reproduksi
+      placeholder: |
+        1. Buka situs, isi nama + 2 pengalaman kerja
+        2. Klik Simpan PDF
+        3. Hasilnya 2 halaman
+    validations:
+      required: true
+
+  - type: dropdown
+    id: bagian
+    attributes:
+      label: Bagian yang bermasalah
+      multiple: true
+      options:
+        - Form / input
+        - Preview A4
+        - Simpan PDF
+        - Ekspor DOCX
+        - Foto
+        - Simpan/muat JSON
+        - Panduan
+        - Tampilan di HP
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser & perangkat
+      description: Boleh ditempel dari "Info teknis" yang otomatis ada di template ini.
+      placeholder: Chrome 141 Android 15, Samsung A54 / Safari iOS 18, iPhone 13
+    validations:
+      required: true
+
+  - type: textarea
+    id: info
+    attributes:
+      label: Info teknis
+      description: Otomatis terisi kalau kamu memakai tombol "Laporkan bug" di situs.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: lampiran
+    attributes:
+      label: Screenshot / file
+      description: Tarik gambar ke sini. Untuk masalah DOCX, lampirkan file .docx-nya kalau bisa.
+    validations:
+      required: false

@@ -57,6 +57,8 @@ docs/             design doc & implementation plan
 
 Bug dan usulan: buka issue. Yang paling berguna: laporan kalau hasil PDF berbeda dari preview, atau CV berisi teks yang bikin layout melewati margin. Sertakan jenis browser + perangkat.
 
+Cara paling gampang: tombol **Laporkan bug** di footer situs — isi issue sudah terisi otomatis (versi, browser, viewport, jumlah halaman, ada/tidak foto). Isi CV tidak ikut terkirim.
+
 ## Lisensi
 
 MIT — lihat [LICENSE](LICENSE).

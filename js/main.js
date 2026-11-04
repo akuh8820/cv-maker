@@ -12,7 +12,7 @@ const formPanel = $("form-panel");
 const previewRoot = $("preview-root");
 const badge = $("badge");
 const badgeM = $("badge-m");
-const saveStatus = [$("save"), $("save-m")];
+const saveStatus = [$("save"), $("save-m"), $("save-f")];
 
 let state = store.load();
 
@@ -86,6 +86,7 @@ const ui = {
     return openIds;
   },
   onActivate: (id) => activate(id),
+  onDelete: (info) => offerUndo(info),
   onToggle: (id, open) => {
     if (open) {
       openIds.add(id);
@@ -101,10 +102,105 @@ const ui = {
 const persist = debounce((s) => {
   try {
     store.save(s);
+    lastSaveError = "";
+    setSaveStatus(`Tersimpan ${jam()}`);
   } catch (err) {
+    lastSaveError = err.message;
+    setSaveStatus("Gagal menyimpan", "error");
     console.warn(err.message);
   }
 }, 400);
+
+// ---- Umpan balik: status simpan, toast, undo ----
+
+const pad2 = (n) => String(n).padStart(2, "0");
+const jam = () => {
+  const d = new Date();
+  return `${pad2(d.getHours())}.${pad2(d.getMinutes())}`;
+};
+
+let lastSaveError = "";
+
+function setSaveStatus(text, tone = "") {
+  for (const node of saveStatus) {
+    if (!node) continue;
+    node.textContent = text;
+    if (tone) node.dataset.tone = tone;
+    else delete node.dataset.tone;
+  }
+}
+
+let toastTimer = 0;
+
+function hideToast() {
+  clearTimeout(toastTimer);
+  const t = $("toast");
+  if (!t) return;
+  t.hidden = true;
+  t.replaceChildren();
+  delete t.dataset.tone;
+}
+
+function showToast({ message, actionLabel = "", onAction = null, tone = "", ms = 8000 }) {
+  const t = $("toast");
+  if (!t) return;
+  clearTimeout(toastTimer);
+  t.replaceChildren();
+  const msg = document.createElement("span");
+  msg.className = "toast-msg";
+  msg.textContent = message;
+  t.append(msg);
+  if (actionLabel && onAction) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "toast-action";
+    btn.textContent = actionLabel;
+    btn.addEventListener("click", () => {
+      hideToast();
+      onAction();
+    });
+    t.append(btn);
+  }
+  if (tone) t.dataset.tone = tone;
+  else delete t.dataset.tone;
+  t.hidden = false;
+  toastTimer = window.setTimeout(hideToast, ms);
+}
+
+// Satu undo pending pada satu waktu; diganti oleh aksi destruktif berikutnya
+// dan dibatalkan saat template/import berubah (indeks lama tidak lagi valid).
+let undoPending = null;
+
+function clearUndo(closeToast = false) {
+  undoPending = null;
+  if (closeToast) hideToast();
+}
+
+function offerUndo({ message, undo }) {
+  undoPending = { undo };
+  showToast({
+    message,
+    actionLabel: "Urungkan",
+    onAction: () => {
+      const pending = undoPending;
+      undoPending = null;
+      if (!pending) return;
+      pending.undo();
+      renderForm(formPanel, state, onChange, ui);
+      applyActive();
+      persist(state);
+      repaint();
+      showToast({ message: "Dikembalikan", ms: 4000 });
+    },
+  });
+}
+
+// Klik status yang gagal untuk melihat penyebabnya (bukan alert()).
+for (const node of saveStatus) {
+  node?.addEventListener("click", () => {
+    if (lastSaveError) showToast({ message: `Gagal menyimpan: ${lastSaveError}`, tone: "error", ms: 12000 });
+  });
+}
 
 function paintBadge() {
   const sheet = previewRoot.querySelector(".cv-sheet");
@@ -204,6 +300,16 @@ function paintShell(s) {
   }
 }
 
+// Overlay hanya bila lembar benar-benar kosong (belum ada nama/kontak/isi).
+function paintEmpty() {
+  const empty = $("preview-empty");
+  if (!empty) return;
+  const sheet = previewRoot.querySelector(".cv-sheet");
+  const isEmpty = !sheet || sheet.childElementCount === 0;
+  empty.hidden = !isEmpty;
+  $("preview-panel")?.classList.toggle("is-empty", isEmpty);
+}
+
 function paintPmeta(scale) {
   const meta = $("pmeta");
   if (!meta) return;
@@ -214,6 +320,7 @@ function paintPmeta(scale) {
 
 const repaint = debounce(() => {
   renderPreview(previewRoot, state);
+  paintEmpty();
   paintBadge();
   paintShell(state);
   fitPreview();
@@ -242,7 +349,9 @@ new ResizeObserver(fitPreview).observe(viewport);
 window.addEventListener("resize", fitPreview);
 
 function onChange(next) {
-  state = next;
+  // Sebagian aksi di form.js memutasi state di tempat lalu memanggil
+  // onChange() tanpa argumen.
+  if (next !== undefined) state = next;
   persist(state);
   repaint();
 }
@@ -253,6 +362,7 @@ function render() {
   renderForm(formPanel, state, onChange, ui);
   applyActive();
   renderPreview(previewRoot, state);
+  paintEmpty();
   paintBadge();
   paintShell(state);
   fitPreview();
@@ -266,6 +376,7 @@ function fillTemplates() {
   sel.addEventListener("change", () => {
     state = setTemplate(state, sel.value);
     persist(state);
+    clearUndo(true);
     resetUi();
     render();
   });
@@ -321,7 +432,7 @@ async function exportDocx(e) {
   try {
     downloadBlob(await buildDocx(state), docxFilename(state));
   } catch (err) {
-    alert(`Gagal membuat DOCX: ${err.message}`);
+    showToast({ message: `Gagal membuat DOCX: ${err.message}`, tone: "error", ms: 12000 });
   } finally {
     btn.disabled = false;
   }
@@ -349,10 +460,12 @@ $("file-import").addEventListener("change", async (e) => {
   try {
     onChange(await store.fromJSONFile(file));
     $("template").value = state.template;
+    clearUndo(true);
     resetUi();
     render();
+    showToast({ message: "Draft berhasil dimuat", ms: 4000 });
   } catch (err) {
-    alert(`Gagal memuat JSON: ${err.message}`);
+    showToast({ message: `Gagal memuat JSON: ${err.message}`, tone: "error", ms: 12000 });
   }
 });
 

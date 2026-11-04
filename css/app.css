@@ -202,7 +202,7 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
 .mprogress::-webkit-scrollbar { display: none; }
 .mprogress-text { font-size: 12px; font-weight: 700; white-space: nowrap; }
 .save-status { font-size: 12px; color: var(--muted); white-space: nowrap; }
-.save-status[data-tone="error"] { color: var(--danger); font-weight: 600; }
+.save-status[data-tone="error"] { color: var(--danger); font-weight: 600; cursor: pointer; text-decoration: underline dotted; }
 .save-status:empty { display: none; }
 
 .chip {
@@ -253,6 +253,8 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
 .section { scroll-margin-top: 12px; }
 #preview-panel { padding: 16px 12px; }
 
+#preview-panel.is-empty .preview-viewport { min-height: min(70dvh, 620px); }
+
 .preview-empty {
   position: absolute;
   inset: 0;
@@ -268,6 +270,7 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
   font-size: 13px;
 }
 .preview-empty-title { margin: 0; font-weight: 700; color: var(--ink); }
+.preview-empty-icon { width: 48px; height: 60px; margin: 0 auto 4px; color: var(--line-strong); }
 
 /* --- Rail (desktop) --- */
 .rail-list { list-style: none; margin: 0; padding: 6px; display: grid; gap: 2px; }
@@ -429,6 +432,7 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
     font-weight: 700;
   }
   .form-progress-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .form-progress .save-status { flex: none; }
   .form-progress-bar > span { display: block; height: 100%; width: 0; background: var(--ok); }
 
   #form-panel {
@@ -782,6 +786,7 @@ legend.section-title { padding: 0; }
   .preview-viewport,
   #preview-root {
     position: static;
+    min-height: 0;
     height: auto;
     max-height: none;
     overflow: visible;

@@ -59,6 +59,7 @@
     <div id="form-progress" class="form-progress">
       <span id="form-progress-text">0/10 bagian</span>
       <div class="form-progress-bar"><span id="form-progress-fill"></span></div>
+      <span id="save-f" class="save-status" aria-live="polite"></span>
     </div>
     <section id="form-panel" class="panel" aria-label="Formulir CV"></section>
   </section>
@@ -68,6 +69,10 @@
     <div class="preview-viewport">
       <div id="preview-root"></div>
       <div id="preview-empty" class="preview-empty" hidden>
+        <svg class="preview-empty-icon" viewBox="0 0 48 60" aria-hidden="true" focusable="false">
+          <rect x="3" y="3" width="42" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M11 16h26M11 24h26M11 32h18M11 44h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
         <p class="preview-empty-title">Pratinjau masih kosong</p>
         <p>Isi nama atau kontak di langkah Identitas, lalu lembar CV muncul di sini.</p>
       </div>

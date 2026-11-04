@@ -7,7 +7,7 @@ import { SECTIONS, TEMPLATES } from "./schema.js";
 import { processPhoto } from "./photo.js";
 import { statusOf, stepIds, stepLabel, STATUS_LABEL } from "./progress.js";
 
-const NO_UI = { activeId: null, openIds: new Set(), onActivate() {}, onToggle() {} };
+const NO_UI = { activeId: null, openIds: new Set(), onActivate() {}, onToggle() {}, onDelete() {} };
 
 // <summary> tiap langkah: nomor, nama, pill status, chevron.
 function sectionSummary(state, id) {
@@ -108,7 +108,7 @@ function control(idBase, def, value, onSet, tipId) {
 
 // --- Baris bullet (maks 4) dengan tombol tambah/hapus ---
 
-function bulletsBlock(idBase, entry, def, onChange) {
+function bulletsBlock(idBase, entry, def, onChange, ui) {
   const rows = entry[def.key];
   const wrap = el("div", "field bullets-field");
 
@@ -125,7 +125,15 @@ function bulletsBlock(idBase, entry, def, onChange) {
         const del = el("button", "btn-icon", "Hapus");
         del.type = "button";
         del.setAttribute("aria-label", `Hapus ${def.label.toLowerCase()} baris ${i + 1}`);
-        del.addEventListener("click", () => { rows.splice(i, 1); onChange(); rerender(); });
+        del.addEventListener("click", () => {
+          const [removed] = rows.splice(i, 1);
+          onChange();
+          rerender();
+          ui.onDelete?.({
+            message: `Baris ${def.label.toLowerCase()} dihapus`,
+            undo: () => rows.splice(i, 0, removed),
+          });
+        });
         li.append(del);
       }
       list.append(li);
@@ -148,7 +156,15 @@ function bulletsBlock(idBase, entry, def, onChange) {
 
 // --- Kartu entri berulang ---
 
-function entryCard(sid, idx, total, entry, section, onChange, rerender, tipId) {
+function entryTitle(entry) {
+  for (const key of ["jabatan", "peran", "jenjang", "nama"]) {
+    const v = (entry?.[key] ?? "").toString().trim();
+    if (v) return v;
+  }
+  return "";
+}
+
+function entryCard(sid, idx, total, entry, section, onChange, rerender, tipId, ui) {
   const art = el("article", "entry");
   const head = el("div", "entry-head");
   head.append(el("span", "entry-num", String(idx + 1)));
@@ -177,9 +193,14 @@ function entryCard(sid, idx, total, entry, section, onChange, rerender, tipId) {
   });
   mk("Hapus", true, () => {
     art.remove();
-    section.items.splice(idx, 1);
+    const [removed] = section.items.splice(idx, 1);
     onChange();
     rerender();
+    const title = entryTitle(removed);
+    ui.onDelete?.({
+      message: title ? `Entri "${title}" dihapus` : "Entri dihapus",
+      undo: () => section.items.splice(idx, 0, removed),
+    });
   });
   head.append(actions);
   art.append(head);
@@ -187,7 +208,7 @@ function entryCard(sid, idx, total, entry, section, onChange, rerender, tipId) {
   const idBase = `${sid}-e${idx}`;
   for (const def of section.itemFields) {
     if (def.type === "bullets") {
-      art.append(bulletsBlock(idBase, entry, def, onChange));
+      art.append(bulletsBlock(idBase, entry, def, onChange, ui));
     } else {
       art.append(control(idBase, def, entry[def.key], (k, v) => { entry[k] = v; onChange(); }, tipId));
     }
@@ -196,14 +217,14 @@ function entryCard(sid, idx, total, entry, section, onChange, rerender, tipId) {
 }
 
 // Daftar entri: host kartu + tombol "+ Tambah". sectionLike: { label, items, newItem, itemFields }.
-function entryList(sid, sectionLike, emptyText, onChange, tipId) {
+function entryList(sid, sectionLike, emptyText, onChange, tipId, ui = NO_UI) {
   const host = el("div", "entries");
   const rerender = () => {
     host.replaceChildren();
     const total = sectionLike.items.length;
     if (!total) host.append(el("p", "empty", emptyText));
     sectionLike.items.forEach((entry, idx) =>
-      host.append(entryCard(sid, idx, total, entry, sectionLike, onChange, rerender, tipId)),
+      host.append(entryCard(sid, idx, total, entry, sectionLike, onChange, rerender, tipId, ui)),
     );
   };
   rerender();
@@ -225,7 +246,7 @@ function entryList(sid, sectionLike, emptyText, onChange, tipId) {
 
 // --- Isi section non-header ---
 
-function sectionBody(section, state, onChange) {
+function sectionBody(section, state, onChange, ui) {
   const body = el("div", "section-body");
   const tipId = `${section.id}-tip`;
 
@@ -243,12 +264,12 @@ function sectionBody(section, state, onChange) {
       tipId));
     body.append(entryList("referensi-items",
       { label: "Referensi", items: ref.items, newItem: section.newItem, itemFields: section.itemFields },
-      "Pilih \"Daftar\" untuk mengisi nama orang. Minta izinnya dulu.", onChange, tipId));
+      "Pilih \"Daftar\" untuk mengisi nama orang. Minta izinnya dulu.", onChange, tipId, ui));
   } else if (section.type === "entries") {
     body.append(entryList(section.id,
       { label: section.label, items: state[section.id], newItem: section.newItem, itemFields: section.itemFields },
       `Belum ada ${section.label.toLowerCase()}.${section.skippable ? " Lewati kalau tidak relevan." : ""}`,
-      onChange, tipId));
+      onChange, tipId, ui));
   }
   return body;
 }
@@ -339,9 +360,16 @@ function headerBlock(state, onChange, ui) {
     }
   });
   removeBtn.addEventListener("click", () => {
+    const prev = state.header.foto;
     state.header.foto = null;
     onChange(state);
     sync();
+    ui.onDelete?.({
+      message: "Foto dihapus",
+      undo: () => {
+        state.header.foto = prev;
+      },
+    });
   });
   sync();
 
@@ -401,7 +429,7 @@ export function renderForm(root, state, onChange, ui = NO_UI) {
       body.append(skipBox);
     }
 
-    body.append(sectionBody(section, state, onChange));
+    body.append(sectionBody(section, state, onChange, ui));
     fs.append(body);
     frag.append(wireDetails(fs, section.id, ui));
   }

@@ -21,13 +21,37 @@ export async function run({ browser, url }) {
         badgeM: document.getElementById("badge-m").textContent,
       };
     });
-    await page.close();
     if (m.scrollW > 390) throw new Error(`HP scroll horizontal: ${m.scrollW}`);
     if (m.toolbarH > 60) throw new Error(`toolbar HP ${m.toolbarH}px > 60`);
     if (m.pdfW === 0 || m.pdfH < 44) throw new Error(`tombol PDF HP ${m.pdfW}×${m.pdfH}`);
     if (m.mprogress === "none") throw new Error("baris progress HP tidak tampil");
     if (!m.badgeM) throw new Error("badge halaman HP kosong");
     if (errors.length) throw new Error(`HP console: ${errors.join(" | ")}`);
+
+    // Label langkah terpanjang + status simpan harus tetap muat tanpa clipping.
+    await page.type("#header-nama", "Putri");
+    await new Promise((r) => setTimeout(r, 900));
+    await page.evaluate(() => {
+      document.querySelector('#rail-list .rail-step[data-step="organisasi"]').click();
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    const fit = await page.evaluate(() => {
+      const row = document.getElementById("mprogress");
+      const chip = document.getElementById("chip-section").getBoundingClientRect();
+      return {
+        rowScroll: row.scrollWidth,
+        rowClient: row.clientWidth,
+        chipRight: Math.round(chip.right),
+        chipH: Math.round(chip.height),
+        chipText: document.getElementById("chip-section").textContent,
+      };
+    });
+    if (fit.rowScroll > fit.rowClient + 1)
+      throw new Error(`baris progress meluber: ${fit.rowScroll} > ${fit.rowClient}`);
+    if (fit.chipRight > 390 + 1) throw new Error(`chip keluar layar: right=${fit.chipRight}`);
+    if (fit.chipH < 44) throw new Error(`chip ${fit.chipH}px < 44px`);
+    if (!fit.chipText) throw new Error("chip langkah kosong");
+    await page.close();
   }
 
   // --- Desktop 1366 ---

@@ -63,7 +63,12 @@ function applyActive(scroll = false) {
     else btn.removeAttribute("aria-current");
   }
   const chip = $("chip-section");
-  if (chip && activeId) chip.textContent = stepLabel(activeId);
+  if (chip && activeId) {
+    const label = stepLabel(activeId);
+    chip.textContent = label;
+    chip.title = label;
+    chip.setAttribute("aria-label", `Langkah aktif: ${label}. Buka daftar langkah`);
+  }
   const box = formPanel.querySelector(`details[data-step="${activeId}"]`);
   if (!box) return;
   if (!box.open) box.open = true;

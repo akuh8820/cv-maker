@@ -250,6 +250,7 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
 #preview-panel.is-fit .cv-sheet { margin: 0; }
 
 #form-panel { padding: 12px 12px 48px; }
+.section { scroll-margin-top: 12px; }
 #preview-panel { padding: 16px 12px; }
 
 .preview-empty {
@@ -369,6 +370,7 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
   .site-foot { padding-bottom: 24px; }
   .toolbar-title { font-size: 14px; }
   #badge { display: none; }
+  .section { scroll-margin-top: 106px; } /* toolbar + baris progress */
 }
 
 .only-wide { display: none; }
@@ -561,7 +563,46 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
   border-radius: var(--radius);
   background: var(--paper);
 }
-.section.is-skipped > :not(legend):not(.skip-box) { opacity: 0.45; }
+.section.is-skipped .section-body { opacity: 0.45; }
+
+/* Kepala section (summary) — target 44px, chevron berputar saat terbuka */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: -14px -14px 0;
+  padding: 8px 14px;
+  list-style: none;
+  cursor: pointer;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.section-head::-webkit-details-marker { display: none; }
+.section[open] > .section-head { border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.section-num {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--line-strong);
+}
+.section-name { min-width: 0; font-size: 15px; font-weight: 700; }
+.pill {
+  flex: none;
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pill[data-status="selesai"] { border-color: var(--ok); color: var(--ok); background: #eef6f0; }
+.pill[data-status="sebagian"] { border-color: #d9a300; color: var(--warn); background: #faf3e2; }
+.pill[data-status="dilewati"] { border-style: dashed; }
+.chev { flex: none; font-size: 12px; color: var(--muted); transition: transform 0.15s; }
+.section[open] .chev { transform: rotate(90deg); }
 
 .section-title, h2.section-title {
   display: block;

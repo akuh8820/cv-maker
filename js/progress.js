@@ -58,6 +58,13 @@ const RULES = {
   },
 };
 
+export const STATUS_LABEL = {
+  selesai: "Selesai",
+  sebagian: "Sebagian",
+  kosong: "Belum diisi",
+  dilewati: "Dilewati",
+};
+
 export function stepIds(state) {
   return ["identitas", ...(state.order || [])];
 }

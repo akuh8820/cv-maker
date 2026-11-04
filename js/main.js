@@ -1,5 +1,5 @@
 import { TEMPLATES } from "./schema.js";
-import { stepIds, stepLabel, statusOf, progressOf } from "./progress.js";
+import { stepIds, stepLabel, statusOf, progressOf, STATUS_LABEL } from "./progress.js";
 import * as store from "./store.js";
 import { renderForm, setTemplate } from "./form.js";
 import { renderPreview, measure } from "./preview.js";
@@ -15,6 +15,88 @@ const badgeM = $("badge-m");
 const saveStatus = [$("save"), $("save-m")];
 
 let state = store.load();
+
+// ---- State UI: langkah aktif + section terbuka (sessionStorage, bukan draft) ----
+const UI_KEY = "bikincv.ui.v1";
+let activeId = null;
+let openIds = new Set();
+
+function validIds() {
+  return stepIds(state);
+}
+
+function saveUi() {
+  try {
+    sessionStorage.setItem(UI_KEY, JSON.stringify({ activeId, openIds: [...openIds] }));
+  } catch {
+    /* private mode */
+  }
+}
+
+function loadUi() {
+  const ids = validIds();
+  let saved = null;
+  try {
+    saved = JSON.parse(sessionStorage.getItem(UI_KEY));
+  } catch {
+    /* private mode */
+  }
+  if (saved && ids.includes(saved.activeId)) {
+    activeId = saved.activeId;
+    openIds = new Set((saved.openIds || []).filter((id) => ids.includes(id)));
+  } else {
+    activeId = ids.find((id) => statusOf(state, id) !== "selesai") || ids[ids.length - 1];
+    openIds = new Set(activeId ? [activeId] : []);
+  }
+}
+
+function resetUi() {
+  const ids = validIds();
+  activeId = ids.find((id) => statusOf(state, id) !== "selesai") || ids[ids.length - 1];
+  openIds = new Set(activeId ? [activeId] : []);
+  saveUi();
+}
+
+function applyActive(scroll = false) {
+  for (const btn of document.querySelectorAll("#rail-list .rail-step")) {
+    if (btn.dataset.step === activeId) btn.setAttribute("aria-current", "step");
+    else btn.removeAttribute("aria-current");
+  }
+  const chip = $("chip-section");
+  if (chip && activeId) chip.textContent = stepLabel(activeId);
+  const box = formPanel.querySelector(`details[data-step="${activeId}"]`);
+  if (!box) return;
+  if (!box.open) box.open = true;
+  if (scroll) box.scrollIntoView({ block: "start", behavior: "smooth" });
+}
+
+function activate(id, scroll = false) {
+  if (!validIds().includes(id)) return;
+  activeId = id;
+  openIds.add(id);
+  saveUi();
+  applyActive(scroll);
+}
+
+const ui = {
+  get activeId() {
+    return activeId;
+  },
+  get openIds() {
+    return openIds;
+  },
+  onActivate: (id) => activate(id),
+  onToggle: (id, open) => {
+    if (open) {
+      openIds.add(id);
+      activeId = id;
+      applyActive();
+    } else {
+      openIds.delete(id);
+    }
+    saveUi();
+  },
+};
 
 const persist = debounce((s) => {
   try {
@@ -109,6 +191,17 @@ function paintShell(s) {
   for (const node of document.querySelectorAll("#rail-list .rail-step, #sheet-list button")) {
     node.querySelector(".rail-dot")?.setAttribute("data-status", statusOf(s, node.dataset.step));
   }
+
+  // Pill status di kepala tiap section (diperbarui tanpa re-render form).
+  for (const box of formPanel.querySelectorAll("details[data-step]")) {
+    const st = statusOf(s, box.dataset.step);
+    const pill = box.querySelector(".pill");
+    if (pill) {
+      pill.dataset.status = st;
+      pill.textContent = STATUS_LABEL[st];
+    }
+    box.classList.toggle("is-skipped", st === "dilewati");
+  }
 }
 
 function paintPmeta(scale) {
@@ -157,7 +250,8 @@ function onChange(next) {
 function render() {
   buildRail(state);
   buildSheet(state);
-  renderForm(formPanel, state, onChange);
+  renderForm(formPanel, state, onChange, ui);
+  applyActive();
   renderPreview(previewRoot, state);
   paintBadge();
   paintShell(state);
@@ -172,9 +266,39 @@ function fillTemplates() {
   sel.addEventListener("change", () => {
     state = setTemplate(state, sel.value);
     persist(state);
+    resetUi();
     render();
   });
 }
+
+// --- Navigasi: rail, "Buka semua", chip + dialog daftar langkah ---
+$("rail-list").addEventListener("click", (e) => {
+  const btn = e.target.closest(".rail-step");
+  if (btn) activate(btn.dataset.step, true);
+});
+
+$("expand-all").addEventListener("click", () => {
+  openIds = new Set(stepIds(state));
+  saveUi();
+  for (const box of formPanel.querySelectorAll("details[data-step]")) box.open = true;
+});
+
+const sheet = $("sheet");
+$("chip-section").addEventListener("click", () => {
+  buildSheet(state);
+  paintShell(state);
+  sheet.showModal();
+});
+$("sheet-close").addEventListener("click", () => sheet.close());
+sheet.addEventListener("click", (e) => {
+  if (e.target === sheet) sheet.close();
+});
+$("sheet-list").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-step]");
+  if (!btn) return;
+  sheet.close();
+  activate(btn.dataset.step, true);
+});
 
 // Menu ⋮: tutup saat klik di luar atau Escape.
 const menu = $("menu");
@@ -225,10 +349,13 @@ $("file-import").addEventListener("change", async (e) => {
   try {
     onChange(await store.fromJSONFile(file));
     $("template").value = state.template;
+    resetUi();
+    render();
   } catch (err) {
     alert(`Gagal memuat JSON: ${err.message}`);
   }
 });
 
+loadUi();
 fillTemplates();
 render();

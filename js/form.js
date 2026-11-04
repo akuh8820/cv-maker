@@ -5,6 +5,30 @@
 
 import { SECTIONS, TEMPLATES } from "./schema.js";
 import { processPhoto } from "./photo.js";
+import { statusOf, stepIds, stepLabel, STATUS_LABEL } from "./progress.js";
+
+const NO_UI = { activeId: null, openIds: new Set(), onActivate() {}, onToggle() {} };
+
+// <summary> tiap langkah: nomor, nama, pill status, chevron.
+function sectionSummary(state, id) {
+  const summary = el("summary", "section-head");
+  const num = el("span", "section-num", String(stepIds(state).indexOf(id) + 1).padStart(2, "0"));
+  const name = el("span", "section-name", stepLabel(id));
+  const status = statusOf(state, id);
+  const pill = el("span", "pill", STATUS_LABEL[status]);
+  pill.dataset.status = status;
+  summary.append(num, name, pill, el("span", "chev", "▸"));
+  return summary;
+}
+
+// Terapkan state buka/tutup + event accordion. `open` diset sebelum listener
+// agar toggle awal tidak tercatat sebagai aksi user.
+function wireDetails(box, id, ui) {
+  const open = ui.openIds?.has(id) || ui.activeId === id;
+  box.open = Boolean(open);
+  box.addEventListener("toggle", () => ui.onToggle?.(id, box.open));
+  return box;
+}
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -252,12 +276,15 @@ function longTextField(section, state, onChange) {
 
 // --- Header & foto ---
 
-function headerBlock(state, onChange) {
-  const box = el("div", "section");
-  box.append(el("h2", "section-title", "Data Diri"));
+function headerBlock(state, onChange, ui) {
+  const box = el("details", "section");
+  box.dataset.step = "identitas";
+  box.append(sectionSummary(state, "identitas"));
+
+  const body = el("div", "section-body");
   const tip = el("p", "tip", "Nama dan minimal satu kontak sebelum menyimpan PDF.");
   tip.id = "header-tip";
-  box.append(tip);
+  body.append(tip);
 
   for (const [key, label, ph] of [
     ["nama", "Nama Lengkap", "Putri Ramadhani"],
@@ -267,7 +294,7 @@ function headerBlock(state, onChange) {
     ["linkedin", "LinkedIn (tanpa https://)", "linkedin.com/in/namakamu"],
     ["kota", "Kota", "Jakarta"],
   ]) {
-    box.append(labeled(`header-${key}`, label, textInput(state.header[key], ph, (v) => { state.header[key] = v; onChange(state); }), "header-tip"));
+    body.append(labeled(`header-${key}`, label, textInput(state.header[key], ph, (v) => { state.header[key] = v; onChange(state); }), "header-tip"));
   }
 
   const err = el("p", "error");
@@ -323,29 +350,32 @@ function headerBlock(state, onChange) {
 
   const fotoBox = el("div", "foto-box");
   fotoBox.append(el("span", "field-label", "Foto 3x4"), uploadLabel, file, thumb, removeBtn, err);
-  box.append(fotoBox);
-  return box;
+  body.append(fotoBox);
+  box.append(body);
+  return wireDetails(box, "identitas", ui);
 }
 
 // --- renderForm / setTemplate ---
 
-export function renderForm(root, state, onChange) {
+export function renderForm(root, state, onChange, ui = NO_UI) {
   initTabs();
   const frag = document.createDocumentFragment();
-  frag.append(headerBlock(state, onChange));
+  frag.append(headerBlock(state, onChange, ui));
 
   for (const sid of state.order) {
     const section = SECTIONS.find((s) => s.id === sid);
     if (!section) continue;
 
-    const fs = el("fieldset", "section");
+    const fs = el("details", "section");
     fs.dataset.section = section.id;
+    fs.dataset.step = section.id;
     fs.dataset.tip = `${section.id}-tip`;
-    fs.append(el("legend", "section-title", section.label));
+    fs.append(sectionSummary(state, section.id));
 
+    const body = el("div", "section-body");
     const tip = el("p", "tip", section.tip);
     tip.id = `${section.id}-tip`;
-    fs.append(tip);
+    body.append(tip);
 
     if (section.skippable) {
       const id = `${section.id}-skip`;
@@ -368,11 +398,12 @@ export function renderForm(root, state, onChange) {
       skipLabel.setAttribute("aria-describedby", `${section.id}-tip`);
       const skipBox = el("div", "skip-box");
       skipBox.append(skip, skipLabel);
-      fs.append(skipBox);
+      body.append(skipBox);
     }
 
-    fs.append(sectionBody(section, state, onChange));
-    frag.append(fs);
+    body.append(sectionBody(section, state, onChange));
+    fs.append(body);
+    frag.append(wireDetails(fs, section.id, ui));
   }
   root.replaceChildren(frag);
 }

@@ -2,6 +2,35 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.1.0/), versi mengikuti [SemVer](https://semver.org/lang/id/).
 
+## [1.1.0] — 2026-11-04
+
+Fokus: orientasi saat mengisi dan umpan balik. Lembar CV A4, ekspor PDF/DOCX, dan format draft JSON tidak berubah.
+
+### Ditambahkan
+- Navigasi 10 langkah: rail bernomor di desktop (01 Identitas + 9 section) dengan status per langkah (selesai / sebagian / belum diisi / dilewati) dan progress "x/10 bagian".
+- Section bisa dilipat (`<details>`); tombol **Buka semua** untuk yang lebih suka menggulir. Di HP, chip langkah aktif membuka daftar 10 bagian sebagai bottom sheet.
+- Undo untuk hapus entri, baris pencapaian, dan foto lewat toast **Urungkan** (8 detik). Undo dibatalkan saat template diganti, JSON diimpor, atau ada penghapusan berikutnya.
+- Status simpan otomatis: "Tersimpan HH.MM", atau "Gagal menyimpan" yang bisa diklik untuk melihat penyebabnya.
+- Empty state pratinjau saat draft masih kosong, plus meta bar A4 (ukuran, template, skala).
+- `js/progress.js`: satu-satunya sumber aturan status/progress, diuji unit (15 kasus).
+
+### Diubah
+- Toolbar HP dari 3 baris (184px) menjadi satu baris (±56px); **Simpan PDF** selalu terlihat 44px; JSON, Muat JSON, dan DOCX pindah ke menu ⋮.
+- Error DOCX dan import JSON memakai toast, bukan `alert()`.
+- Kolom pratinjau desktop lebih lebar; skala ≥0,86 pada 1366×900 (sebelumnya ±0,72).
+- `index.html`, `css/app.css`, `js/form.js`, dan `js/main.js` direstrukturisasi untuk shell tiga kolom.
+
+### Diperbaiki
+- Blok CSS `#form-panel` / `#preview-panel` berada di luar media query sehingga bocor ke mobile (pratinjau HP kena `position: sticky`, tinggi 100%, padding desktop).
+- Menambah, memindah, atau menghapus entri memanggil `onChange()` tanpa argumen sehingga seluruh draft menjadi `undefined` dan tersimpan sebagai string `"undefined"` di `localStorage`.
+- Tinggi layout desktop tidak lagi memakai angka footer yang di-hardcode (46px).
+
+### Diverifikasi
+- `npm test` 15/15 dan `npm run test:e2e` 5 check: smoke, layout (390/1024/1366), navigasi, feedback (undo/toast/status simpan/import), print.
+- PDF dari state penuh dengan semua section terlipat: 1 halaman A4, teks asli, tanpa elemen UI.
+- DOCX dari browser → LibreOffice: 1 halaman A4.
+- 390×844: tanpa scroll horizontal, toolbar ≤60px, tombol PDF 44px terlihat.
+
 ## [1.0.0] — 2026-11-03
 
 Rilis pertama. Situs statis di GitHub Pages, 100% client-side.

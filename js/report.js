@@ -1,6 +1,6 @@
 // Tautan "Laporkan bug": bawa info teknis secukupnya, TANPA isi CV user.
 const REPO = "https://github.com/akuh8820/cv-maker";
-const VERSION = "1.0.0";
+const VERSION = "1.1.0";
 
 export function diagnostics(state, sheet) {
   const sections = (state.order || []).filter((id) => !(state.hide || []).includes(id));

@@ -5,6 +5,32 @@
 
 import { SECTIONS, TEMPLATES } from "./schema.js";
 import { processPhoto } from "./photo.js";
+import { statusOf, stepIds, stepLabel, STATUS_LABEL } from "./progress.js";
+
+const NO_UI = { activeId: null, openIds: new Set(), onActivate() {}, onToggle() {}, onDelete() {} };
+
+// <summary> tiap langkah: nomor, nama, pill status, chevron.
+function sectionSummary(state, id) {
+  const summary = el("summary", "section-head");
+  const num = el("span", "section-num", String(stepIds(state).indexOf(id) + 1).padStart(2, "0"));
+  const name = el("span", "section-name", stepLabel(id));
+  const status = statusOf(state, id);
+  const pill = el("span", "pill", STATUS_LABEL[status]);
+  pill.dataset.status = status;
+  const chev = el("span", "chev", "▸");
+  chev.setAttribute("aria-hidden", "true");
+  summary.append(num, name, pill, chev);
+  return summary;
+}
+
+// Terapkan state buka/tutup + event accordion. `open` diset sebelum listener
+// agar toggle awal tidak tercatat sebagai aksi user.
+function wireDetails(box, id, ui) {
+  const open = ui.openIds?.has(id) || ui.activeId === id;
+  box.open = Boolean(open);
+  box.addEventListener("toggle", () => ui.onToggle?.(id, box.open));
+  return box;
+}
 
 const el = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -84,7 +110,7 @@ function control(idBase, def, value, onSet, tipId) {
 
 // --- Baris bullet (maks 4) dengan tombol tambah/hapus ---
 
-function bulletsBlock(idBase, entry, def, onChange) {
+function bulletsBlock(idBase, entry, def, onChange, ui) {
   const rows = entry[def.key];
   const wrap = el("div", "field bullets-field");
 
@@ -101,7 +127,15 @@ function bulletsBlock(idBase, entry, def, onChange) {
         const del = el("button", "btn-icon", "Hapus");
         del.type = "button";
         del.setAttribute("aria-label", `Hapus ${def.label.toLowerCase()} baris ${i + 1}`);
-        del.addEventListener("click", () => { rows.splice(i, 1); onChange(); rerender(); });
+        del.addEventListener("click", () => {
+          const [removed] = rows.splice(i, 1);
+          onChange();
+          rerender();
+          ui.onDelete?.({
+            message: `Baris ${def.label.toLowerCase()} dihapus`,
+            undo: () => rows.splice(i, 0, removed),
+          });
+        });
         li.append(del);
       }
       list.append(li);
@@ -124,7 +158,15 @@ function bulletsBlock(idBase, entry, def, onChange) {
 
 // --- Kartu entri berulang ---
 
-function entryCard(sid, idx, total, entry, section, onChange, rerender, tipId) {
+function entryTitle(entry) {
+  for (const key of ["jabatan", "peran", "jenjang", "nama"]) {
+    const v = (entry?.[key] ?? "").toString().trim();
+    if (v) return v;
+  }
+  return "";
+}
+
+function entryCard(sid, idx, total, entry, section, onChange, rerender, tipId, ui) {
   const art = el("article", "entry");
   const head = el("div", "entry-head");
   head.append(el("span", "entry-num", String(idx + 1)));
@@ -153,9 +195,14 @@ function entryCard(sid, idx, total, entry, section, onChange, rerender, tipId) {
   });
   mk("Hapus", true, () => {
     art.remove();
-    section.items.splice(idx, 1);
+    const [removed] = section.items.splice(idx, 1);
     onChange();
     rerender();
+    const title = entryTitle(removed);
+    ui.onDelete?.({
+      message: title ? `Entri "${title}" dihapus` : "Entri dihapus",
+      undo: () => section.items.splice(idx, 0, removed),
+    });
   });
   head.append(actions);
   art.append(head);
@@ -163,7 +210,7 @@ function entryCard(sid, idx, total, entry, section, onChange, rerender, tipId) {
   const idBase = `${sid}-e${idx}`;
   for (const def of section.itemFields) {
     if (def.type === "bullets") {
-      art.append(bulletsBlock(idBase, entry, def, onChange));
+      art.append(bulletsBlock(idBase, entry, def, onChange, ui));
     } else {
       art.append(control(idBase, def, entry[def.key], (k, v) => { entry[k] = v; onChange(); }, tipId));
     }
@@ -172,14 +219,14 @@ function entryCard(sid, idx, total, entry, section, onChange, rerender, tipId) {
 }
 
 // Daftar entri: host kartu + tombol "+ Tambah". sectionLike: { label, items, newItem, itemFields }.
-function entryList(sid, sectionLike, emptyText, onChange, tipId) {
+function entryList(sid, sectionLike, emptyText, onChange, tipId, ui = NO_UI) {
   const host = el("div", "entries");
   const rerender = () => {
     host.replaceChildren();
     const total = sectionLike.items.length;
     if (!total) host.append(el("p", "empty", emptyText));
     sectionLike.items.forEach((entry, idx) =>
-      host.append(entryCard(sid, idx, total, entry, sectionLike, onChange, rerender, tipId)),
+      host.append(entryCard(sid, idx, total, entry, sectionLike, onChange, rerender, tipId, ui)),
     );
   };
   rerender();
@@ -201,7 +248,7 @@ function entryList(sid, sectionLike, emptyText, onChange, tipId) {
 
 // --- Isi section non-header ---
 
-function sectionBody(section, state, onChange) {
+function sectionBody(section, state, onChange, ui) {
   const body = el("div", "section-body");
   const tipId = `${section.id}-tip`;
 
@@ -219,12 +266,12 @@ function sectionBody(section, state, onChange) {
       tipId));
     body.append(entryList("referensi-items",
       { label: "Referensi", items: ref.items, newItem: section.newItem, itemFields: section.itemFields },
-      "Pilih \"Daftar\" untuk mengisi nama orang. Minta izinnya dulu.", onChange, tipId));
+      "Pilih \"Daftar\" untuk mengisi nama orang. Minta izinnya dulu.", onChange, tipId, ui));
   } else if (section.type === "entries") {
     body.append(entryList(section.id,
       { label: section.label, items: state[section.id], newItem: section.newItem, itemFields: section.itemFields },
       `Belum ada ${section.label.toLowerCase()}.${section.skippable ? " Lewati kalau tidak relevan." : ""}`,
-      onChange, tipId));
+      onChange, tipId, ui));
   }
   return body;
 }
@@ -252,12 +299,15 @@ function longTextField(section, state, onChange) {
 
 // --- Header & foto ---
 
-function headerBlock(state, onChange) {
-  const box = el("div", "section");
-  box.append(el("h2", "section-title", "Data Diri"));
+function headerBlock(state, onChange, ui) {
+  const box = el("details", "section");
+  box.dataset.step = "identitas";
+  box.append(sectionSummary(state, "identitas"));
+
+  const body = el("div", "section-body");
   const tip = el("p", "tip", "Nama dan minimal satu kontak sebelum menyimpan PDF.");
   tip.id = "header-tip";
-  box.append(tip);
+  body.append(tip);
 
   for (const [key, label, ph] of [
     ["nama", "Nama Lengkap", "Putri Ramadhani"],
@@ -267,7 +317,7 @@ function headerBlock(state, onChange) {
     ["linkedin", "LinkedIn (tanpa https://)", "linkedin.com/in/namakamu"],
     ["kota", "Kota", "Jakarta"],
   ]) {
-    box.append(labeled(`header-${key}`, label, textInput(state.header[key], ph, (v) => { state.header[key] = v; onChange(state); }), "header-tip"));
+    body.append(labeled(`header-${key}`, label, textInput(state.header[key], ph, (v) => { state.header[key] = v; onChange(state); }), "header-tip"));
   }
 
   const err = el("p", "error");
@@ -312,9 +362,16 @@ function headerBlock(state, onChange) {
     }
   });
   removeBtn.addEventListener("click", () => {
+    const prev = state.header.foto;
     state.header.foto = null;
     onChange(state);
     sync();
+    ui.onDelete?.({
+      message: "Foto dihapus",
+      undo: () => {
+        state.header.foto = prev;
+      },
+    });
   });
   sync();
 
@@ -323,29 +380,32 @@ function headerBlock(state, onChange) {
 
   const fotoBox = el("div", "foto-box");
   fotoBox.append(el("span", "field-label", "Foto 3x4"), uploadLabel, file, thumb, removeBtn, err);
-  box.append(fotoBox);
-  return box;
+  body.append(fotoBox);
+  box.append(body);
+  return wireDetails(box, "identitas", ui);
 }
 
 // --- renderForm / setTemplate ---
 
-export function renderForm(root, state, onChange) {
+export function renderForm(root, state, onChange, ui = NO_UI) {
   initTabs();
   const frag = document.createDocumentFragment();
-  frag.append(headerBlock(state, onChange));
+  frag.append(headerBlock(state, onChange, ui));
 
   for (const sid of state.order) {
     const section = SECTIONS.find((s) => s.id === sid);
     if (!section) continue;
 
-    const fs = el("fieldset", "section");
+    const fs = el("details", "section");
     fs.dataset.section = section.id;
+    fs.dataset.step = section.id;
     fs.dataset.tip = `${section.id}-tip`;
-    fs.append(el("legend", "section-title", section.label));
+    fs.append(sectionSummary(state, section.id));
 
+    const body = el("div", "section-body");
     const tip = el("p", "tip", section.tip);
     tip.id = `${section.id}-tip`;
-    fs.append(tip);
+    body.append(tip);
 
     if (section.skippable) {
       const id = `${section.id}-skip`;
@@ -368,11 +428,12 @@ export function renderForm(root, state, onChange) {
       skipLabel.setAttribute("aria-describedby", `${section.id}-tip`);
       const skipBox = el("div", "skip-box");
       skipBox.append(skip, skipLabel);
-      fs.append(skipBox);
+      body.append(skipBox);
     }
 
-    fs.append(sectionBody(section, state, onChange));
-    frag.append(fs);
+    body.append(sectionBody(section, state, onChange, ui));
+    fs.append(body);
+    frag.append(wireDetails(fs, section.id, ui));
   }
   root.replaceChildren(frag);
 }

@@ -1,4 +1,4 @@
-/* Bikin CV — UI aplikasi (form, toolbar, tab mobile).
+/* Bikin CV — UI aplikasi (toolbar, rail, form, pratinjau).
    Layout CV A4 ada di css/cv.css */
 
 /* --- Reset & token --- */
@@ -18,6 +18,7 @@
   --warn: #8a5a00;
   --radius: 6px;
   --toolbar-h: 56px;
+  --rail-w: 56px;
 }
 
 html { -webkit-text-size-adjust: 100%; }
@@ -47,35 +48,36 @@ body {
 
 [hidden] { display: none !important; } /* reset: menang atas display block/control */
 
-/* --- Toolbar: nama situs > badge > aksi --- */
+/* --- Toolbar --- */
 .toolbar {
   position: sticky;
   top: 0;
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
   min-height: var(--toolbar-h);
-  padding: 8px 12px;
+  padding: 6px 12px;
   background: var(--paper);
   border-bottom: 1px solid var(--line);
 }
 
 .toolbar-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .badge {
-  order: 1;
-  padding: 3px 10px;
+  padding: 3px 9px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
   font-size: 12px;
   background: var(--wash);
   color: var(--muted);
+  white-space: nowrap;
 }
 .badge-ok { border-color: var(--ok); color: var(--ok); background: #eef6f0; }
 .badge-warn { border-color: var(--warn); color: var(--warn); background: #faf3e2; }
@@ -84,16 +86,25 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
   margin-left: auto;
+  min-width: 0;
 }
 
 .select-wrap {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  min-width: 0;
+}
+#template {
+  min-height: 40px;
+  max-width: 120px;
+  padding: 0 6px;
+  font: inherit;
   font-size: 13px;
-  color: var(--muted);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
 }
 
 /* --- Tombol --- */
@@ -115,7 +126,7 @@ body {
 
 .btn-ghost { font-size: 13px; padding: 0 10px; }
 .btn-icon {
-  font-size: 12.5px;
+  font-size: 15px;
   padding: 0 10px;
   min-height: 44px;
   border-color: var(--line);
@@ -126,21 +137,110 @@ body {
 
 a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; }
 
-/* --- Layout & tab --- */
-.layout {
+#btn-pdf { padding: 0 10px; font-size: 13.5px; }
+
+/* --- Menu ⋮ --- */
+.menu { position: relative; }
+.menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+  list-style: none;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+.menu-btn::-webkit-details-marker { display: none; }
+.menu-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  min-width: 208px;
+  padding: 6px;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
+  gap: 2px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(16, 22, 30, 0.16);
+}
+.menu-pop > * {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-pop > *:hover { background: var(--wash); }
+
+/* --- Baris progress HP --- */
+.mprogress {
+  position: sticky;
+  top: var(--toolbar-h);
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 4px 12px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.mprogress::-webkit-scrollbar { display: none; }
+.mprogress-text { flex: none; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.mprogress > .badge, .mprogress > .save-status { flex: none; }
+.save-status { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.save-status[data-tone="error"] { color: var(--danger); font-weight: 600; cursor: pointer; text-decoration: underline dotted; }
+.save-status:empty { display: none; }
+
+.chip {
+  margin-left: auto;
+  min-height: 44px;
+  padding: 0 12px;
+  flex: 0 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 46vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Layout --- */
+.layout {
+  display: block;
   width: 100%;
   max-width: 100%;
 }
+
+#rail, #form-progress, #pmeta { display: none; }
 
 .panel { padding: 0; min-width: 0; }
 
 /* Leak .cv-sheet (210mm) tidak boleh melebarkan dokumen di HP:
    preview di-scroll di dalam panelnya sendiri. */
 #preview-panel { overflow: auto; max-width: 100%; }
-.preview-viewport { max-width: 100%; }
+.preview-viewport { max-width: 100%; position: relative; }
 
 /* Fit-to-width: --cv-scale diset JS (min(1, lebarTersedia/794)).
    Margin auto-negatif .cv-sheet dinetralkan saat fit (class is-fit)
@@ -152,9 +252,76 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
 #preview-panel.is-fit .cv-sheet { margin: 0; }
 
 #form-panel { padding: 12px 12px 48px; }
-
+.section { scroll-margin-top: 12px; }
 #preview-panel { padding: 16px 12px; }
 
+#preview-panel.is-empty .preview-viewport { min-height: min(70dvh, 620px); }
+
+.preview-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  background: rgba(244, 245, 246, 0.94);
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.preview-empty-title { margin: 0; font-weight: 700; color: var(--ink); }
+.preview-empty-icon { width: 48px; height: 60px; margin: 0 auto 4px; color: var(--line-strong); }
+
+/* --- Rail (desktop) --- */
+.rail-list { list-style: none; margin: 0; padding: 6px; display: grid; gap: 2px; }
+.rail-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+.rail-step:hover { background: var(--wash); }
+.rail-step[aria-current="step"] {
+  background: #eaeef4;
+  color: var(--accent);
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.rail-num {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--line-strong);
+}
+.rail-step[aria-current="step"] .rail-num { color: var(--accent); }
+.rail-label { display: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-dot { flex: none; width: 8px; height: 8px; margin-left: auto; border-radius: 50%; background: var(--line-strong); }
+.rail-dot[data-status="selesai"] { background: var(--ok); }
+.rail-dot[data-status="sebagian"] { background: var(--warn); }
+.rail-dot[data-status="dilewati"] { background: none; border: 1px dashed var(--line-strong); }
+
+.rail-head { display: none; padding: 12px 12px 4px; }
+.rail-title { margin: 0; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.rail-count { margin: 2px 0 6px; font-size: 20px; font-weight: 700; color: var(--ink); }
+.rail-bar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.rail-bar > span { display: block; height: 100%; width: 0; background: var(--ok); transition: width 0.2s; }
+.rail-expand { display: none; margin: 4px 12px 8px; width: calc(100% - 24px); font-size: 12px; }
+.rail-note { display: none; margin: 0 12px 12px; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
+
+/* --- Tabbar & footer (HP) --- */
 .tabbar {
   position: fixed;
   bottom: 0;
@@ -180,49 +347,218 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
   box-shadow: inset 0 -3px 0 var(--accent);
 }
 
+.site-foot {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px 12px 12px;
+}
+.site-foot a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;   /* target sentuh */
+  font-size: 12.5px;
+  color: #565b62;     /* 7.2:1 di atas #f4f5f6 */
+  text-decoration: none;
+}
+.site-foot a:hover { text-decoration: underline; }
+.site-foot a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.foot-note { font-size: 11.5px; color: var(--muted); }
+
 /* Mobile: satu panel saja, mengikuti tab aktif */
 @media screen and (max-width: 899px) {
   body[data-tab="form"] #preview-panel { display: none; }
-  body[data-tab="preview"] #form-panel { display: none; }
-  body[data-tab="form"] .tabbar { display: flex; }
-  body[data-tab="preview"] .tabbar { display: flex; }
-  main { padding-bottom: 56px; }
-  body[data-tab="form"] main { padding-bottom: 70px; }
-}
-
-/* Desktop: dua kolom; form scroll sendiri, preview sticky */
-@media screen and (min-width: 900px) {
-  .tabbar { display: none; }
-  body { background: var(--wash); }
-
-  .layout {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
-    gap: 0;
-    height: calc(100dvh - var(--toolbar-h) - 46px - 1px);
-  }
-  .site-foot { padding: 6px 28px; }
-}
-
-/* Mobile: beri ruang di atas tabbar fixed (footer + body spacer) */
-@media (max-width: 899px) {
+  body[data-tab="preview"] #form-panel,
+  body[data-tab="preview"] #form-progress { display: none; }
   body { padding-bottom: 70px; }
   .site-foot { padding-bottom: 24px; }
+  .toolbar-title { font-size: 14px; }
+  #badge { display: none; }
+  .section { scroll-margin-top: 106px; } /* toolbar + baris progress */
 }
 
-  #form-panel {
-    height: 100%;
+.only-wide { display: none; }
+.only-mobile { display: flex; }
+
+/* --- Desktop: rail + form + pratinjau --- */
+@media screen and (min-width: 900px) {
+  body {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  .toolbar { flex: none; }
+  .tabbar, .mprogress { display: none; }
+  .only-mobile { display: none; }
+  .only-wide { display: inline-flex; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: var(--rail-w) minmax(340px, 460px) minmax(0, 1fr);
+    flex: 1;
+    min-height: 0;
+  }
+
+  #rail {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     overflow-y: auto;
-    padding: 20px 28px 64px;
+    background: var(--paper);
     border-right: 1px solid var(--line);
+  }
+  .rail-list { padding: 6px 4px; }
+  .rail-step { position: relative; justify-content: center; padding: 0; }
+  .rail-dot { position: absolute; top: 6px; right: 6px; margin: 0; }
+
+  .form-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    border-right: 1px solid var(--line);
+    background: var(--wash);
+  }
+  #form-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: none;
+    padding: 8px 20px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .form-progress-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .form-progress .save-status { flex: none; }
+  .form-progress-bar > span { display: block; height: 100%; width: 0; background: var(--ok); }
+
+  #form-panel {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    overflow-y: auto;
+    padding: 20px 24px 64px;
   }
 
   #preview-panel {
-    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: auto;
+    padding: 14px 24px 24px;
     overflow-y: auto;
-    padding: 24px;
-    position: sticky;
-    top: 0;
+    position: static;
   }
+  #pmeta {
+    display: block;
+    flex: none;
+    padding: 0 0 10px;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .site-foot { flex: none; padding: 6px 24px; border-top: 1px solid var(--line); background: var(--paper); }
+}
+
+/* --- Rail lebar (≥1200) --- */
+@media screen and (min-width: 1200px) {
+  :root { --rail-w: 176px; }
+  .layout { grid-template-columns: var(--rail-w) minmax(360px, 460px) minmax(0, 1fr); }
+  #form-progress { display: none; }
+  .rail-step { justify-content: flex-start; padding: 0 8px; }
+  .rail-dot { position: static; transform: none; }
+  .rail-label { display: inline; }
+  .rail-head, .rail-expand, .rail-note { display: block; }
+  .rail-expand { display: inline-flex; align-items: center; justify-content: center; }
+}
+
+/* --- Dialog daftar langkah --- */
+.sheet {
+  width: min(420px, calc(100vw - 24px));
+  max-height: 80dvh;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(16, 22, 30, 0.32);
+}
+.sheet::backdrop { background: rgba(16, 22, 30, 0.45); }
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.sheet-title { margin: 0; font-size: 14px; font-weight: 700; }
+.sheet-list { list-style: none; margin: 0; padding: 8px; display: grid; gap: 2px; }
+.sheet-list button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.sheet-list button:hover { background: var(--wash); }
+.sheet-list .rail-num { font-size: 12px; }
+
+@media screen and (max-width: 899px) {
+  .sheet {
+    width: 100%;
+    max-width: none;
+    margin: auto 0 0;
+    border-radius: 12px 12px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* --- Toast --- */
+.toast {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #1f242b;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13.5px;
+  box-shadow: 0 12px 30px rgba(16, 22, 30, 0.3);
+}
+.toast-msg { flex: 1; min-width: 0; }
+.toast-action {
+  flex: none;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: #ffd479;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.toast[data-tone="error"] { background: #7a201a; }
+@media screen and (min-width: 900px) {
+  .toast { left: auto; right: 24px; bottom: 16px; max-width: 420px; }
 }
 
 /* --- Form: fieldset per section --- */
@@ -233,17 +569,46 @@ a.btn-ghost { display: inline-flex; align-items: center; text-decoration: none; 
   border-radius: var(--radius);
   background: var(--paper);
 }
-.section.is-skipped > :not(legend):not(.skip-box) { opacity: 0.45; }
+.section.is-skipped .section-body > :not(.skip-box) { opacity: 0.45; }
 
-.section-title, h2.section-title {
-  display: block;
-  margin: 0 0 4px;
-  padding: 0;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+/* Kepala section (summary) — target 44px, chevron berputar saat terbuka */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: -14px -14px 0;
+  padding: 8px 14px;
+  list-style: none;
+  cursor: pointer;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
-legend.section-title { padding: 0; }
+.section-head::-webkit-details-marker { display: none; }
+.section[open] > .section-head { border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.section-num {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--line-strong);
+}
+.section-name { min-width: 0; overflow: hidden; font-size: 15px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.pill {
+  flex: none;
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pill[data-status="selesai"] { border-color: var(--ok); color: var(--ok); background: #eef6f0; }
+.pill[data-status="sebagian"] { border-color: var(--warn); color: var(--warn); background: #faf3e2; }
+.pill[data-status="dilewati"] { border-style: dashed; }
+.chev { flex: none; font-size: 12px; color: var(--muted); transition: transform 0.15s; }
+.section[open] .chev { transform: rotate(90deg); }
 
 .tip {
   margin: 0 0 12px;
@@ -362,7 +727,6 @@ legend.section-title { padding: 0; }
   border-radius: var(--radius);
   background: var(--wash);
 }
-.foto-btn { margin-top: 8px; }
 .foto-thumb {
   display: block;
   width: 84px;   /* 3x4 */
@@ -378,28 +742,7 @@ legend.section-title { padding: 0; }
   color: var(--danger);
 }
 
-/* --- Header diri (di atas semua fieldset) --- */
-.section { /* blok pertama juga */
-}
 #form-panel > .section:first-child { border-color: var(--accent); }
-
-/* --- Footer tipis (Laporkan bug / Panduan) --- */
-.site-foot {
-  display: flex;
-  gap: 24px;
-  align-items: center;
-  padding: 10px 12px 12px;
-}
-.site-foot a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;   /* target sentuh */
-  font-size: 12.5px;
-  color: #565b62;     /* 7.2:1 di atas #f4f5f6 */
-  text-decoration: none;
-}
-.site-foot a:hover { text-decoration: underline; }
-.site-foot a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* --- Preferensi aksesibilitas & print (UI saja; CV di cv.css) --- */
 @media (prefers-reduced-motion: reduce) {
@@ -410,8 +753,16 @@ legend.section-title { padding: 0; }
 @media print {
   .toolbar,
   .tabbar,
+  .mprogress,
+  #rail,
+  .form-col,
   #form-panel,
-  .site-foot { display: none; }
+  #form-progress,
+  #pmeta,
+  .site-foot,
+  .sheet,
+  .toast,
+  .preview-empty { display: none !important; }
 
   html, body { background: #fff; height: auto; overflow: visible; padding: 0; }
 
@@ -426,6 +777,7 @@ legend.section-title { padding: 0; }
   .preview-viewport,
   #preview-root {
     position: static;
+    min-height: 0;
     height: auto;
     max-height: none;
     overflow: visible;

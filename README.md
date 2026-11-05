@@ -13,6 +13,8 @@ Template CV statis bikin orang menebak-nebak: apakah isiannya jadi 2 halaman? ap
 - Preview A4 live, hasil print = preview (satu stylesheet, satu DOM).
 - Tombol **Simpan PDF** (lewat dialog print browser) dan **DOCX** (dibuat di browser, bukan di server).
 - Badge jumlah halaman — 1 halaman adalah target, bukan syarat.
+- Navigasi 10 langkah: rail bernomor di desktop, daftar langkah di HP, status per bagian (selesai / sebagian / belum / dilewati), dan progress "x/10 bagian". Section bisa dilipat.
+- Undo untuk hapus entri/baris/foto, status "Tersimpan HH.MM", dan error inline (tanpa `alert()`).
 - Dua template: **Fresh Graduate** (organisasi & pendidikan menonjol) dan **Berpengalaman** (kerja menonjol, organisasi disembunyikan).
 - Foto di-crop otomatis ke rasio 3x4 dan dikompres di browser.
 - Draft tersimpan otomatis di browser; ada export/import **JSON** untuk arsip atau pindah perangkat.
@@ -34,6 +36,16 @@ Buka `http://localhost:8000`. Jangan buka `index.html` lewat `file://` — CSP m
 
 Tanpa build step: semua file yang ada di repo bisa langsung disajikan apa adanya.
 
+Uji (dev-only, tidak ikut ke halaman):
+
+```bash
+npm install          # sekali; PUPPETEER_SKIP_DOWNLOAD=1 bila Chrome sudah ada
+npm test             # unit, node:test
+npm run test:e2e     # Puppeteer: layout, navigasi, feedback, print
+```
+
+`test:e2e` menyalakan server statis sendiri di port acak; `40-print.mjs` memakai `pdfinfo`/`pdftotext` (poppler) bila tersedia.
+
 ## Peta file
 
 ```
@@ -46,10 +58,12 @@ js/schema.js      definisi section/field/template (sumber tunggal)
 js/store.js       state + localStorage + import/export JSON
 js/form.js        render form dari schema
 js/preview.js     render state -> DOM CV + hitung halaman
+js/progress.js    aturan status & progress per langkah
 js/photo.js       crop & kompres foto 3x4
 js/docx.js        export DOCX memakai vendor/docx.umd.cjs
-js/main.js        wiring toolbar, badge, print
+js/main.js        wiring toolbar, rail, progress, toast/undo, print
 vendor/           docx@9.15.1 dist/index.umd.cjs (dipin apa adanya)
+tests/            unit (node:test) + e2e (Puppeteer), dev-only
 docs/             design doc & implementation plan
 ```
 

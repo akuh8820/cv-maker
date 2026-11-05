@@ -10,41 +10,97 @@
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/cv.css">
 </head>
-<body>
+<body data-tab="form">
 
 <header class="toolbar">
   <h1 class="toolbar-title">Bikin CV</h1>
   <span id="badge" class="badge" aria-live="polite"></span>
-  <nav class="toolbar-actions">
+  <nav class="toolbar-actions" aria-label="Aksi CV">
     <label class="select-wrap">
-      Template
+      <span class="sr-only">Template</span>
       <select id="template"></select>
     </label>
-    <button id="btn-json" type="button" class="btn-ghost">Simpan JSON</button>
-    <button id="btn-import" type="button" class="btn-ghost">Muat JSON</button>
-    <input id="file-import" type="file" accept="application/json" hidden>
-    <button id="btn-docx" type="button" class="btn-ghost">DOCX</button>
+    <button id="btn-docx" type="button" class="btn-ghost only-wide">DOCX</button>
     <button id="btn-pdf" type="button" class="btn">Simpan PDF</button>
-    <a class="btn-ghost" href="panduan.html">Panduan</a>
+    <details id="menu" class="menu">
+      <summary class="btn-icon menu-btn" aria-label="Menu lain" title="Menu lain">⋯</summary>
+      <div class="menu-pop">
+        <button id="btn-json" type="button">Simpan JSON</button>
+        <button id="btn-import" type="button">Muat JSON</button>
+        <input id="file-import" type="file" accept="application/json" hidden>
+        <button id="btn-docx-menu" type="button" class="only-mobile">DOCX</button>
+        <a href="panduan.html">Panduan</a>
+        <a href="https://github.com/akuh8820/cv-maker/issues/new?labels=bug" target="_blank" rel="noopener">Laporkan bug</a>
+      </div>
+    </details>
   </nav>
 </header>
 
+<div id="mprogress" class="mprogress" aria-label="Kemajuan pengisian">
+  <span id="mprogress-text" class="mprogress-text">0/10 bagian</span>
+  <span id="badge-m" class="badge" aria-live="polite"></span>
+  <span id="save-m" class="save-status" aria-live="polite"></span>
+  <button id="chip-section" type="button" class="chip" aria-haspopup="dialog">Identitas</button>
+</div>
+
 <main class="layout">
-  <section id="form-panel" class="panel" aria-label="Formulir CV"></section>
+  <nav id="rail" class="rail" aria-label="Langkah pengisian">
+    <div class="rail-head">
+      <p class="rail-title">Kemajuan</p>
+      <p class="rail-count"><span id="rail-done">0</span>/<span id="rail-total">10</span> bagian</p>
+      <div class="rail-bar"><span id="rail-bar"></span></div>
+      <p id="save" class="save-status" aria-live="polite"></p>
+    </div>
+    <ol id="rail-list" class="rail-list"></ol>
+    <button id="expand-all" type="button" class="btn-ghost rail-expand">Buka semua</button>
+    <p class="rail-note">Data hanya tersimpan di browser ini — tidak dikirim ke server.</p>
+  </nav>
+
+  <section class="form-col">
+    <div id="form-progress" class="form-progress">
+      <span id="form-progress-text">0/10 bagian</span>
+      <div class="form-progress-bar"><span id="form-progress-fill"></span></div>
+      <span id="save-f" class="save-status" aria-live="polite"></span>
+    </div>
+    <section id="form-panel" class="panel" aria-label="Formulir CV"></section>
+  </section>
+
   <section id="preview-panel" class="panel" aria-label="Preview CV">
-    <div class="preview-viewport"><div id="preview-root"></div></div>
+    <div id="pmeta" class="pmeta">A4 · 210 × 297 mm</div>
+    <div class="preview-viewport">
+      <div id="preview-root"></div>
+      <div id="preview-empty" class="preview-empty" hidden>
+        <svg class="preview-empty-icon" viewBox="0 0 48 60" aria-hidden="true" focusable="false">
+          <rect x="3" y="3" width="42" height="54" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M11 16h26M11 24h26M11 32h18M11 44h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <p class="preview-empty-title">Pratinjau masih kosong</p>
+        <p>Isi nama atau kontak di langkah Identitas, lalu lembar CV muncul di sini.</p>
+      </div>
+    </div>
   </section>
 </main>
 
 <footer class="site-foot">
   <a id="link-bug" href="https://github.com/akuh8820/cv-maker/issues/new?labels=bug" target="_blank" rel="noopener">Laporkan bug</a>
   <a href="panduan.html">Panduan</a>
+  <span class="foot-note">Data tidak dikirim ke server.</span>
 </footer>
 
 <nav class="tabbar" aria-label="Navigasi panel">
   <button type="button" id="tab-form" class="tab is-active" aria-pressed="true">Isi</button>
   <button type="button" id="tab-preview" class="tab" aria-pressed="false">Preview</button>
 </nav>
+
+<dialog id="sheet" class="sheet" aria-label="Daftar langkah">
+  <div class="sheet-head">
+    <p class="sheet-title">Langkah pengisian</p>
+    <button type="button" id="sheet-close" class="btn-icon" aria-label="Tutup">Tutup</button>
+  </div>
+  <ol id="sheet-list" class="sheet-list"></ol>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/docx.umd.cjs"></script>
 <script type="module" src="js/main.js"></script>

@@ -1,4 +1,5 @@
 import { TEMPLATES } from "./schema.js";
+import { stepIds, stepLabel, statusOf, progressOf, STATUS_LABEL } from "./progress.js";
 import * as store from "./store.js";
 import { renderForm, setTemplate } from "./form.js";
 import { renderPreview, measure } from "./preview.js";
@@ -10,30 +11,328 @@ const $ = (id) => document.getElementById(id);
 const formPanel = $("form-panel");
 const previewRoot = $("preview-root");
 const badge = $("badge");
+const badgeM = $("badge-m");
+const saveStatus = [$("save"), $("save-m"), $("save-f")];
 
 let state = store.load();
+
+// ---- State UI: langkah aktif + section terbuka (sessionStorage, bukan draft) ----
+const UI_KEY = "bikincv.ui.v1";
+let activeId = null;
+let openIds = new Set();
+// Toggle dari "Buka semua" bukan pilihan user: jangan pindahkan langkah aktif.
+let skipToggle = 0;
+
+function validIds() {
+  return stepIds(state);
+}
+
+function saveUi() {
+  try {
+    sessionStorage.setItem(UI_KEY, JSON.stringify({ activeId, openIds: [...openIds] }));
+  } catch {
+    /* private mode */
+  }
+}
+
+function loadUi() {
+  const ids = validIds();
+  let saved = null;
+  try {
+    saved = JSON.parse(sessionStorage.getItem(UI_KEY));
+  } catch {
+    /* private mode */
+  }
+  if (saved && ids.includes(saved.activeId)) {
+    activeId = saved.activeId;
+    openIds = new Set((saved.openIds || []).filter((id) => ids.includes(id)));
+  } else {
+    activeId = ids.find((id) => statusOf(state, id) !== "selesai") || ids[ids.length - 1];
+    openIds = new Set(activeId ? [activeId] : []);
+  }
+}
+
+function resetUi() {
+  const ids = validIds();
+  activeId = ids.find((id) => statusOf(state, id) !== "selesai") || ids[ids.length - 1];
+  openIds = new Set(activeId ? [activeId] : []);
+  saveUi();
+}
+
+function applyActive(scroll = false) {
+  for (const btn of document.querySelectorAll("#rail-list .rail-step")) {
+    if (btn.dataset.step === activeId) btn.setAttribute("aria-current", "step");
+    else btn.removeAttribute("aria-current");
+  }
+  const chip = $("chip-section");
+  if (chip && activeId) {
+    const label = stepLabel(activeId);
+    chip.textContent = label;
+    chip.title = label;
+    chip.setAttribute("aria-label", `Langkah aktif: ${label}. Buka daftar langkah`);
+  }
+  const box = formPanel.querySelector(`details[data-step="${activeId}"]`);
+  if (!box) return;
+  if (!box.open) box.open = true;
+  if (scroll) box.scrollIntoView({ block: "start", behavior: "smooth" });
+}
+
+function activate(id, scroll = false) {
+  if (!validIds().includes(id)) return;
+  activeId = id;
+  openIds.add(id);
+  saveUi();
+  applyActive(scroll);
+}
+
+const ui = {
+  get activeId() {
+    return activeId;
+  },
+  get openIds() {
+    return openIds;
+  },
+  onActivate: (id) => activate(id),
+  onDelete: (info) => offerUndo(info),
+  onToggle: (id, open) => {
+    if (skipToggle > 0) {
+      skipToggle -= 1;
+      if (open) openIds.add(id);
+      else openIds.delete(id);
+      return;
+    }
+    if (open) {
+      openIds.add(id);
+      activeId = id;
+      applyActive();
+    } else {
+      openIds.delete(id);
+    }
+    saveUi();
+  },
+};
 
 const persist = debounce((s) => {
   try {
     store.save(s);
+    lastSaveError = "";
+    setSaveStatus(`Tersimpan ${jam()}`);
   } catch (err) {
+    lastSaveError = err.message;
+    setSaveStatus("Gagal menyimpan", "error");
     console.warn(err.message);
   }
 }, 400);
+
+// ---- Umpan balik: status simpan, toast, undo ----
+
+const pad2 = (n) => String(n).padStart(2, "0");
+const jam = () => {
+  const d = new Date();
+  return `${pad2(d.getHours())}.${pad2(d.getMinutes())}`;
+};
+
+let lastSaveError = "";
+
+function setSaveStatus(text, tone = "") {
+  for (const node of saveStatus) {
+    if (!node) continue;
+    node.textContent = text;
+    if (tone) node.dataset.tone = tone;
+    else delete node.dataset.tone;
+  }
+}
+
+let toastTimer = 0;
+
+function hideToast() {
+  clearTimeout(toastTimer);
+  const t = $("toast");
+  if (!t) return;
+  t.hidden = true;
+  t.replaceChildren();
+  delete t.dataset.tone;
+}
+
+function showToast({ message, actionLabel = "", onAction = null, tone = "", ms = 8000 }) {
+  const t = $("toast");
+  if (!t) return;
+  clearTimeout(toastTimer);
+  t.replaceChildren();
+  const msg = document.createElement("span");
+  msg.className = "toast-msg";
+  msg.textContent = message;
+  t.append(msg);
+  if (actionLabel && onAction) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "toast-action";
+    btn.textContent = actionLabel;
+    btn.addEventListener("click", () => {
+      hideToast();
+      onAction();
+    });
+    t.append(btn);
+  }
+  if (tone) t.dataset.tone = tone;
+  else delete t.dataset.tone;
+  t.hidden = false;
+  toastTimer = window.setTimeout(hideToast, ms);
+}
+
+// Satu undo pending pada satu waktu; diganti oleh aksi destruktif berikutnya
+// dan dibatalkan saat template/import berubah (indeks lama tidak lagi valid).
+let undoPending = null;
+
+function clearUndo(closeToast = false) {
+  undoPending = null;
+  if (closeToast) hideToast();
+}
+
+function offerUndo({ message, undo }) {
+  undoPending = { undo };
+  showToast({
+    message,
+    actionLabel: "Urungkan",
+    onAction: () => {
+      const pending = undoPending;
+      undoPending = null;
+      if (!pending) return;
+      pending.undo();
+      renderForm(formPanel, state, onChange, ui);
+      applyActive();
+      persist(state);
+      repaint();
+      showToast({ message: "Dikembalikan", ms: 4000 });
+    },
+  });
+}
+
+// Klik status yang gagal untuk melihat penyebabnya (bukan alert()).
+for (const node of saveStatus) {
+  node?.addEventListener("click", () => {
+    if (lastSaveError) showToast({ message: `Gagal menyimpan: ${lastSaveError}`, tone: "error", ms: 12000 });
+  });
+}
 
 function paintBadge() {
   const sheet = previewRoot.querySelector(".cv-sheet");
   if (!sheet) return;
   const { pages, heightPx, limitPx } = measure(sheet);
-  badge.textContent = pages > 1 ? "2 halaman — pertimbangkan memangkas" : "1 halaman";
-  badge.className = `badge ${pages > 1 ? "badge-warn" : "badge-ok"}`;
-  badge.title = `${Math.round(heightPx)}px dari ${Math.round(limitPx)}px area cetak`;
+  const text = pages > 1 ? "2 halaman — pertimbangkan memangkas" : "1 halaman";
+  const cls = `badge ${pages > 1 ? "badge-warn" : "badge-ok"}`;
+  for (const node of [badge, badgeM]) {
+    if (!node) continue;
+    node.textContent = text;
+    node.className = cls;
+    node.title = `${Math.round(heightPx)}px dari ${Math.round(limitPx)}px area cetak`;
+  }
   wireReportLink(state, sheet);
+}
+
+// ---- Shell: rail, progress, meta A4 ----
+
+// Satu tombol langkah dipakai rail desktop dan daftar langkah di HP.
+// aria-label lengkap karena rail sempit (900-1199) menyembunyikan teks label.
+function stepButton(s, id, idx, className, labelClass) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  if (className) btn.className = className;
+  btn.dataset.step = id;
+  const label = stepLabel(id);
+  const numText = String(idx + 1).padStart(2, "0");
+  btn.title = label;
+  btn.setAttribute("aria-label", `${numText} ${label}`);
+
+  const num = document.createElement("span");
+  num.className = "rail-num";
+  num.textContent = numText;
+
+  const name = document.createElement("span");
+  if (labelClass) name.className = labelClass;
+  name.textContent = label;
+
+  const dot = document.createElement("span");
+  dot.className = "rail-dot";
+
+  btn.append(num, name, dot);
+  return btn;
+}
+
+function buildRail(s) {
+  const list = $("rail-list");
+  if (!list) return;
+  list.replaceChildren(
+    ...stepIds(s).map((id, i) => {
+      const li = document.createElement("li");
+      li.append(stepButton(s, id, i, "rail-step", "rail-label"));
+      return li;
+    }),
+  );
+}
+
+function buildSheet(s) {
+  const list = $("sheet-list");
+  if (!list) return;
+  list.replaceChildren(
+    ...stepIds(s).map((id, i) => {
+      const li = document.createElement("li");
+      li.append(stepButton(s, id, i));
+      return li;
+    }),
+  );
+}
+
+function paintShell(s) {
+  const { done, total, ratio } = progressOf(s);
+  const pct = `${Math.round(ratio * 100)}%`;
+
+  if ($("rail-done")) $("rail-done").textContent = String(done);
+  if ($("rail-total")) $("rail-total").textContent = String(total);
+  if ($("rail-bar")) $("rail-bar").style.width = pct;
+  if ($("mprogress-text")) $("mprogress-text").textContent = `${done}/${total} bagian`;
+  if ($("form-progress-text")) $("form-progress-text").textContent = `${done}/${total} bagian`;
+  if ($("form-progress-fill")) $("form-progress-fill").style.width = pct;
+
+  for (const node of document.querySelectorAll("#rail-list .rail-step, #sheet-list button")) {
+    node.querySelector(".rail-dot")?.setAttribute("data-status", statusOf(s, node.dataset.step));
+  }
+
+  // Pill status di kepala tiap section (diperbarui tanpa re-render form).
+  for (const box of formPanel.querySelectorAll("details[data-step]")) {
+    const st = statusOf(s, box.dataset.step);
+    const pill = box.querySelector(".pill");
+    if (pill) {
+      pill.dataset.status = st;
+      pill.textContent = STATUS_LABEL[st];
+    }
+    box.classList.toggle("is-skipped", st === "dilewati");
+  }
+}
+
+// Overlay hanya bila lembar benar-benar kosong (belum ada nama/kontak/isi).
+function paintEmpty() {
+  const empty = $("preview-empty");
+  if (!empty) return;
+  const sheet = previewRoot.querySelector(".cv-sheet");
+  const isEmpty = !sheet || sheet.childElementCount === 0;
+  empty.hidden = !isEmpty;
+  $("preview-panel")?.classList.toggle("is-empty", isEmpty);
+}
+
+function paintPmeta(scale) {
+  const meta = $("pmeta");
+  if (!meta) return;
+  const tpl = TEMPLATES[state.template]?.label ?? "";
+  const skala = scale >= 0.999 ? "1:1" : `${Math.round(scale * 100)}%`;
+  meta.textContent = `A4 · 210 × 297 mm · ${tpl} · skala ${skala}`;
 }
 
 const repaint = debounce(() => {
   renderPreview(previewRoot, state);
+  paintEmpty();
   paintBadge();
+  paintShell(state);
   fitPreview();
 }, 120);
 
@@ -42,30 +341,40 @@ const viewport = document.querySelector(".preview-viewport");
 let lastScale = -1;
 function fitPreview() {
   const sheet = previewRoot?.firstElementChild;
-  if (!viewport || !sheet) return;
+  const panel = $("preview-panel");
+  if (!viewport || !panel) return;
+  if (!sheet) return;
   const avail = viewport.clientWidth;
   if (!avail) return;
   const w = sheet.offsetWidth || 794;
   const s = avail < w ? avail / w : 1;
+  paintPmeta(s);
   if (Math.abs(s - lastScale) < 0.001) return;
   lastScale = s;
-  viewport.parentElement.style.setProperty("--cv-scale", s.toFixed(4));
-  viewport.parentElement.classList.toggle("is-fit", s < 1);
+  panel.style.setProperty("--cv-scale", s.toFixed(4));
+  panel.classList.toggle("is-fit", s < 1);
   previewRoot.style.height = s < 1 ? `${Math.ceil(sheet.getBoundingClientRect().height * s)}px` : "";
 }
 new ResizeObserver(fitPreview).observe(viewport);
 window.addEventListener("resize", fitPreview);
 
 function onChange(next) {
-  state = next;
+  // Sebagian aksi di form.js memutasi state di tempat lalu memanggil
+  // onChange() tanpa argumen.
+  if (next !== undefined) state = next;
   persist(state);
   repaint();
 }
 
 function render() {
-  renderForm(formPanel, state, onChange);
+  buildRail(state);
+  buildSheet(state);
+  renderForm(formPanel, state, onChange, ui);
+  applyActive();
   renderPreview(previewRoot, state);
+  paintEmpty();
   paintBadge();
+  paintShell(state);
   fitPreview();
 }
 
@@ -77,9 +386,56 @@ function fillTemplates() {
   sel.addEventListener("change", () => {
     state = setTemplate(state, sel.value);
     persist(state);
+    clearUndo(true);
+    resetUi();
     render();
   });
 }
+
+// --- Navigasi: rail, "Buka semua", chip + dialog daftar langkah ---
+$("rail-list").addEventListener("click", (e) => {
+  const btn = e.target.closest(".rail-step");
+  if (btn) activate(btn.dataset.step, true);
+});
+
+$("expand-all").addEventListener("click", () => {
+  openIds = new Set(stepIds(state));
+  saveUi();
+  let changed = 0;
+  for (const box of formPanel.querySelectorAll("details[data-step]")) {
+    if (!box.open) {
+      box.open = true;
+      changed += 1;
+    }
+  }
+  skipToggle += changed;
+});
+
+const sheet = $("sheet");
+$("chip-section").addEventListener("click", () => {
+  buildSheet(state);
+  paintShell(state);
+  sheet.showModal();
+});
+$("sheet-close").addEventListener("click", () => sheet.close());
+sheet.addEventListener("click", (e) => {
+  if (e.target === sheet) sheet.close();
+});
+$("sheet-list").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-step]");
+  if (!btn) return;
+  sheet.close();
+  activate(btn.dataset.step, true);
+});
+
+// Menu ⋮: tutup saat klik di luar atau Escape.
+const menu = $("menu");
+document.addEventListener("click", (e) => {
+  if (menu?.open && !menu.contains(e.target)) menu.open = false;
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && menu?.open) menu.open = false;
+});
 
 $("btn-pdf").addEventListener("click", () => {
   const restore = setPrintTitle(filename(state, "pdf"));
@@ -87,23 +443,32 @@ $("btn-pdf").addEventListener("click", () => {
   window.print();
 });
 
-$("btn-docx").addEventListener("click", async (e) => {
+async function exportDocx(e) {
   const btn = e.currentTarget;
   btn.disabled = true;
   try {
     downloadBlob(await buildDocx(state), docxFilename(state));
   } catch (err) {
-    alert(`Gagal membuat DOCX: ${err.message}`);
+    showToast({ message: `Gagal membuat DOCX: ${err.message}`, tone: "error", ms: 12000 });
   } finally {
     btn.disabled = false;
   }
+}
+$("btn-docx").addEventListener("click", exportDocx);
+$("btn-docx-menu").addEventListener("click", (e) => {
+  menu.open = false;
+  exportDocx(e);
 });
 
 $("btn-json").addEventListener("click", () => {
+  menu.open = false;
   downloadBlob(store.toJSONFile(state), filename(state, "json"));
 });
 
-$("btn-import").addEventListener("click", () => $("file-import").click());
+$("btn-import").addEventListener("click", () => {
+  menu.open = false;
+  $("file-import").click();
+});
 
 $("file-import").addEventListener("change", async (e) => {
   const file = e.target.files?.[0];
@@ -112,10 +477,15 @@ $("file-import").addEventListener("change", async (e) => {
   try {
     onChange(await store.fromJSONFile(file));
     $("template").value = state.template;
+    clearUndo(true);
+    resetUi();
+    render();
+    showToast({ message: "Draft berhasil dimuat", ms: 4000 });
   } catch (err) {
-    alert(`Gagal memuat JSON: ${err.message}`);
+    showToast({ message: `Gagal memuat JSON: ${err.message}`, tone: "error", ms: 12000 });
   }
 });
 
+loadUi();
 fillTemplates();
 render();

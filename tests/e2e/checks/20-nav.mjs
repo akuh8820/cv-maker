@@ -32,10 +32,18 @@ export async function run({ browser, url }) {
     if (!/Keterampilan/.test(after.chip)) throw new Error(`chip = "${after.chip}"`);
     if (after.scrollTop <= before) throw new Error("form tidak ter-scroll ke section tujuan");
 
-    // Buka semua.
+    // Buka semua: semua terbuka, tapi langkah aktif tidak ikut berpindah.
     await page.click("#expand-all");
+    await new Promise((r) => setTimeout(r, 300));
     const all = await openSteps(page);
     if (all.length !== 10) throw new Error(`buka semua = ${all.length} section`);
+    const afterAll = await page.evaluate(() => ({
+      current: document.querySelector('.rail-step[aria-current="step"]')?.dataset.step,
+      chip: document.getElementById("chip-section").textContent,
+    }));
+    if (afterAll.current !== "keterampilan")
+      throw new Error(`buka semua memindah langkah aktif ke ${afterAll.current}`);
+    if (!/Keterampilan/.test(afterAll.chip)) throw new Error(`chip setelah buka semua = "${afterAll.chip}"`);
 
     // Tutup satu, reload: pilihan bertahan (sessionStorage).
     await page.click('#form-panel details[data-step="bahasa"] > summary');
@@ -88,6 +96,7 @@ export async function run({ browser, url }) {
         step: b.dataset.step,
         num: b.querySelector(".rail-num").textContent,
         dot: b.querySelector(".rail-dot").dataset.status,
+        aria: b.getAttribute("aria-label"),
       })),
     );
     if (rails.length !== 10) throw new Error(`rail = ${rails.length} langkah`);
@@ -95,6 +104,7 @@ export async function run({ browser, url }) {
     const org = rails.find((r) => r.step === "organisasi");
     if (org.num !== "09") throw new Error(`organisasi di ${org.num}`);
     if (org.dot !== "dilewati") throw new Error(`status organisasi = ${org.dot}`);
+    if (!/^09 Pengalaman Organisasi$/.test(org.aria)) throw new Error(`aria-label rail = "${org.aria}"`);
     await page.close();
   }
 }

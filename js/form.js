@@ -17,7 +17,9 @@ function sectionSummary(state, id) {
   const status = statusOf(state, id);
   const pill = el("span", "pill", STATUS_LABEL[status]);
   pill.dataset.status = status;
-  summary.append(num, name, pill, el("span", "chev", "▸"));
+  const chev = el("span", "chev", "▸");
+  chev.setAttribute("aria-hidden", "true");
+  summary.append(num, name, pill, chev);
   return summary;
 }
 

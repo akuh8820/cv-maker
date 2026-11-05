@@ -20,6 +20,8 @@ let state = store.load();
 const UI_KEY = "bikincv.ui.v1";
 let activeId = null;
 let openIds = new Set();
+// Toggle dari "Buka semua" bukan pilihan user: jangan pindahkan langkah aktif.
+let skipToggle = 0;
 
 function validIds() {
   return stepIds(state);
@@ -93,6 +95,12 @@ const ui = {
   onActivate: (id) => activate(id),
   onDelete: (info) => offerUndo(info),
   onToggle: (id, open) => {
+    if (skipToggle > 0) {
+      skipToggle -= 1;
+      if (open) openIds.add(id);
+      else openIds.delete(id);
+      return;
+    }
     if (open) {
       openIds.add(id);
       activeId = id;
@@ -224,32 +232,40 @@ function paintBadge() {
 
 // ---- Shell: rail, progress, meta A4 ----
 
+// Satu tombol langkah dipakai rail desktop dan daftar langkah di HP.
+// aria-label lengkap karena rail sempit (900-1199) menyembunyikan teks label.
+function stepButton(s, id, idx, className, labelClass) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  if (className) btn.className = className;
+  btn.dataset.step = id;
+  const label = stepLabel(id);
+  const numText = String(idx + 1).padStart(2, "0");
+  btn.title = label;
+  btn.setAttribute("aria-label", `${numText} ${label}`);
+
+  const num = document.createElement("span");
+  num.className = "rail-num";
+  num.textContent = numText;
+
+  const name = document.createElement("span");
+  if (labelClass) name.className = labelClass;
+  name.textContent = label;
+
+  const dot = document.createElement("span");
+  dot.className = "rail-dot";
+
+  btn.append(num, name, dot);
+  return btn;
+}
+
 function buildRail(s) {
   const list = $("rail-list");
   if (!list) return;
   list.replaceChildren(
-    ...stepIds(s).map((id) => {
+    ...stepIds(s).map((id, i) => {
       const li = document.createElement("li");
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "rail-step";
-      btn.dataset.step = id;
-      btn.title = stepLabel(id);
-
-      const num = document.createElement("span");
-      num.className = "rail-num";
-      const idx = stepIds(s).indexOf(id) + 1;
-      num.textContent = String(idx).padStart(2, "0");
-
-      const label = document.createElement("span");
-      label.className = "rail-label";
-      label.textContent = stepLabel(id);
-
-      const dot = document.createElement("span");
-      dot.className = "rail-dot";
-
-      btn.append(num, label, dot);
-      li.append(btn);
+      li.append(stepButton(s, id, i, "rail-step", "rail-label"));
       return li;
     }),
   );
@@ -261,18 +277,7 @@ function buildSheet(s) {
   list.replaceChildren(
     ...stepIds(s).map((id, i) => {
       const li = document.createElement("li");
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.dataset.step = id;
-      const num = document.createElement("span");
-      num.className = "rail-num";
-      num.textContent = String(i + 1).padStart(2, "0");
-      const label = document.createElement("span");
-      label.textContent = stepLabel(id);
-      const dot = document.createElement("span");
-      dot.className = "rail-dot";
-      btn.append(num, label, dot);
-      li.append(btn);
+      li.append(stepButton(s, id, i));
       return li;
     }),
   );
@@ -396,7 +401,14 @@ $("rail-list").addEventListener("click", (e) => {
 $("expand-all").addEventListener("click", () => {
   openIds = new Set(stepIds(state));
   saveUi();
-  for (const box of formPanel.querySelectorAll("details[data-step]")) box.open = true;
+  let changed = 0;
+  for (const box of formPanel.querySelectorAll("details[data-step]")) {
+    if (!box.open) {
+      box.open = true;
+      changed += 1;
+    }
+  }
+  skipToggle += changed;
 });
 
 const sheet = $("sheet");

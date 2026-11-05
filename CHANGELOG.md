@@ -2,7 +2,7 @@
 
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.1.0/), versi mengikuti [SemVer](https://semver.org/lang/id/).
 
-## [1.1.0] — 2026-11-04
+## [1.1.0] — 2026-11-05
 
 Fokus: orientasi saat mengisi dan umpan balik. Lembar CV A4, ekspor PDF/DOCX, dan format draft JSON tidak berubah.
 
